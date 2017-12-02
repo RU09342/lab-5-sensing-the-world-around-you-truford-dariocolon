@@ -59,6 +59,5 @@ README for Sensor and Signal Conditioning
 
 # REFERENCES
 	Help from:
-		Russell Trafford
-		Nick Gorab
+		Ben Jukus
 		Code Composer Studio Resource Explorer
