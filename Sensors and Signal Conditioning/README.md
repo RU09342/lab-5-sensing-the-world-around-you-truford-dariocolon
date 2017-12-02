@@ -1,25 +1,64 @@
-# Sensors and Signal Conditioning
-One of the biggest limitations of the microcontroller is the fact that it lives in a digital world. We need certain components to be able to translate the analog world to the digital world and vice-versa. In this lab, we need to be able to convert some electrical phenomena into something our microcontroller can understand. For this, we need a few building blocks to do this.
+README for Sensor and Signal Conditioning
 
-## Sensors
-Sensors in a nutshell convert a physical phenomena into an electrical phenomena. For example, and accelerometer converts an acceleration into a change in capacitance (in the case of some MEMS devices). This electrical phenomena does not have to be a voltage, and as such, we need to be able to convert our sensor output to a voltage. From there, we can read in this voltage through our Analog to Digital Converter (ADC).
 
-## Signal Conditioning
-The signal conditioning chain can be broken up into a few main building blocks. In the beginning you have your sensor which converts something into the electrical world. We then need a block which can convert that resultant electrical phenomena into a voltage. From here, this voltage may be too small/large for our microcontroller, so we need to amplify the signal. From there, we may need to de-noise the signal by filtering. After all of this, we might be at a point where we are ready to read the signal into our processor.
+***CONTENTS***
 
-## Task
-For this part of the lab, you need to focus on two main aspects: utilizing and reading the ADC, and conditioning a sensor to provide you with a decent output. To do this, you will need to build the proper circuitry to take a measurement from sensors which convert a physical phenomena into:
-* Voltage
-* Current
-* Resistance
+-Timer Configuration
 
-## Deliverables
+-Analog to Digital Converter
 
-### Code
-Your code for this section should focus heavily on the ADC and being able to pull data from it. Your code need to communicate back to your computer using UART at 9600 Baud and send the ADC contents at 1 reading per second to start. This really is meant for you to see whether or not your signal conditioning is actually working and you can see changes in your sensor reading. This code should be very very similar to code you have written before and should be simple to port between your processors.
+-References
 
-### Hardware
-The hardware portion should be the same for each of the processors. You will need to have a total of 3 circuits made, each corresponding to a different sensor. You need to look at the range of measurements and the amount of resolution you can get out of your ADC and determine how to convert, scale, and filter your signal. Don't forget the fact that you will need to convert to a voltage, making some of these circuits not so trivial. The main goal as the hardware designer for these sensors is to provide the microprocessor with the best resolution to maximize the effectiveness of the ADC.
+# Timer Config.
 
-### README
-The README for this part of the lab should talk briefly about how the ADC code works, but focus way more on the hardware aspect. You need to include schematics of your circuits, and well as supporting simulation/calculations which show that your circuits should work. You should talk about what types of circuits you are using and how they actually work.
+	The clock used in this code is configured:
+
+		TA0CTL   += TASSEL_1	Auxiliary Clock (32 KHz)
+		TA0CTL   += MC_1	Up-mode
+		CCR0 = 32767
+			Interrupt triggers once per second (1 Hz)
+
+# ADC
+
+	The ADC in this project is 12 bits. This means the resolution is Vin*(2^-12) = Vin*(0.000244140625)
+	This section of the README covers both the 12 and 10 bit ADC usable by the MSP430FR6989
+
+	Since the 12 and 10 bit ADC contain more than 8 bits, we need to used two chars (bytes) to hold the data.
+	Chars lsb and msb (least and most significant bytes) contain the data. The following example shows how the data is processed.
+
+	Example: 12 bit ADC input=	ABCDEFGHIJKL
+
+		msb gets the ADC input shifted right by 4 bits
+
+			msb = ABCDEFGHIJKL >> 4 = ABCDEFGH
+
+		lsb gets the ADC input shifted left by 8 bits
+
+			lsb = ABCDEFGHIJKL << 8 = IJKLxxxx
+
+		msb is sent first, when the buffer is cleared, send lsb so the two consecutive bytes send the following
+
+			ABCDEFGH IJKLxxxx
+
+	10 bit ADC follows the same logic, seen below
+	Example: 10 bit ADC input = ABCDEFGHIJ
+
+		msb = ABCDEFGHIJ >> 2 = ABCDEFGH
+		lsb = ABCDEFGHIJ << 10 = IJxxxxxx
+
+		send msb, followed by lsb
+
+			ABCDEFGH IJxxxxxx
+
+	We chose the final format [ABCDEFGH IJKLxxxx] over [xxxxABCD EFGHIJKL] because in our format,
+	the second byte (lsb) can be completely disregarded in cases when the hardware error is greater than (Vin*0.001953125) or Vin*(2^-9)
+	or cases where that level of accuracy is not required. Power, time, and memory can be saved by excluding the lsb calculation.
+
+	In the format [xxxxABCD EFGHIJKL], if the lsb is disregardded/not calculated, data accuracy is limited to (Vin*0.0625) or Vin*(2^-4).
+
+
+# REFERENCES
+	Help from:
+		Russell Trafford
+		Nick Gorab
+		Code Composer Studio Resource Explorer
